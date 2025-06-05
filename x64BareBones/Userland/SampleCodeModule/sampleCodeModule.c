@@ -1,6 +1,5 @@
 /* sampleCodeModule.c */
-
-#include "../Shell/shell.h"
+#include "shell.h"
 
 int main() {
     setUsername("M&M");

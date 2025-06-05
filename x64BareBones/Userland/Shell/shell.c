@@ -1,6 +1,20 @@
 #include "shell.h"
 #include <stdint.h>
 #include <syscall.h>
+#include <stddef.h>
+
+
+
+static char username[16] = "user";
+
+void setUsername(const char *name) {
+    if (!name)
+        return;
+    for (size_t i = 0; i < sizeof(username) - 1 && name[i]; i++) {
+        username[i] = name[i];
+        username[i + 1] = '\0';
+    }
+}
 
 static int str_eq(const char *a, const char *b) {
     int i = 0;
