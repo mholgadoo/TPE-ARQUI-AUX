@@ -5,10 +5,10 @@ SOURCES=$(wildcard [^_]*.c)
 
 all: $(MODULE)
 
-$(MODULE): $(SOURCES)
-	$(GCC) $(GCCFLAGS) -T sampleCodeModule.ld _loader.c $(SOURCES) -o ../$(MODULE)
+$(MODULE): $(SOURCES) ../Shell/shell.o
+	$(GCC) $(GCCFLAGS) -I../include -T sampleCodeModule.ld _loader.c $(SOURCES) ../Shell/shell.o -o ../$(MODULE)
 
 clean:
-	rm -rf *.o
+	rm -f *.o ../$(MODULE)
 
-.PHONY: all clean print
+.PHONY: all clean
