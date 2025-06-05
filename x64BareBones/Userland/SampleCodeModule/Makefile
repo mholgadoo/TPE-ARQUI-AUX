@@ -1,14 +1,14 @@
 include ../Makefile.inc
 
 MODULE=0000-sampleCodeModule.bin
-SOURCES=$(wildcard [^_]*.c) ../Shell/shell.c
+SOURCES=$(wildcard [^_]*.c)
 
 all: $(MODULE)
 
-$(MODULE): $(SOURCES)
-	$(GCC) $(GCCFLAGS) -DSHELL_LIBRARY -I../include -T sampleCodeModule.ld _loader.c $(SOURCES) -o ../$(MODULE)
+$(MODULE): $(SOURCES) ../Shell/shell.o
+	$(GCC) $(GCCFLAGS) -I../include -T sampleCodeModule.ld _loader.c $(SOURCES) ../Shell/shell.o -o ../$(MODULE)
 
 clean:
-	rm -rf *.o
+	rm -f *.o ../$(MODULE)
 
-.PHONY: all clean print
+.PHONY: all clean

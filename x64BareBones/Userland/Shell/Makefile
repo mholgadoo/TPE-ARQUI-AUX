@@ -1,14 +1,25 @@
 include ../Makefile.inc
 
 MODULE=0002-shell.bin
-SOURCES=$(wildcard [^_]*.c)
+LIBOBJ=shell.o
+MAINOBJ=shell_main.o
+LOADEROBJ=_loader.o
 
 all: $(MODULE)
 
-$(MODULE): $(SOURCES)
-	$(GCC) $(GCCFLAGS) -I../include -T shell.ld _loader.c $(SOURCES) -o ../$(MODULE)
+$(MODULE): $(MAINOBJ) $(LOADEROBJ)
+	$(GCC) $(GCCFLAGS) -I../include -T shell.ld $(LOADEROBJ) $(MAINOBJ) -o ../$(MODULE)
+
+$(MAINOBJ): shell.c
+	$(GCC) $(GCCFLAGS) -I../include -c $< -o $@
+
+$(LIBOBJ): shell.c
+	$(GCC) $(GCCFLAGS) -DSHELL_LIBRARY -I../include -c $< -o $@
+
+$(LOADEROBJ): _loader.c
+	$(GCC) $(GCCFLAGS) -I../include -c $< -o $@
 
 clean:
-	rm -rf *.o
+	rm -f *.o ../$(MODULE)
 
 .PHONY: all clean

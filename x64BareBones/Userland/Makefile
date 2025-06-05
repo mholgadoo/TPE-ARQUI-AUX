@@ -4,8 +4,11 @@ SAMPLE_DATA=0001-sampleDataModule.bin
 
 all: sampleCodeModule sampleDataModule shell
 
-sampleCodeModule:
+sampleCodeModule: Shell/shell.o
 	cd SampleCodeModule; make
+
+Shell/shell.o:
+	cd Shell; make shell.o
 
 sampleDataModule:
 	printf "This is sample data." >> $(SAMPLE_DATA) && dd if=/dev/zero bs=1 count=1 >> $(SAMPLE_DATA)
