@@ -1,6 +1,18 @@
 #include "shell.h"
 #include <stdint.h>
 #include <syscall.h>
+#include <stddef.h>
+
+static char username[16] = "user";
+
+void setUsername(const char *name) {
+    if (!name)
+        return;
+    for (size_t i = 0; i < sizeof(username) - 1 && name[i]; i++) {
+        username[i] = name[i];
+        username[i + 1] = '\0';
+    }
+}
 
 static int str_eq(const char *a, const char *b) {
     int i = 0;
@@ -81,6 +93,7 @@ static void print_regs() {
 void shell_run() {
     char line[64];
     while (1) {
+        print(username);
         print("$> ");
         read_line(line, sizeof(line));
         if (line[0] == 0) continue;
@@ -102,7 +115,9 @@ void shell_run() {
     }
 }
 
+#ifndef SHELL_LIBRARY
 int main() {
     shell_run();
     return 0;
 }
+#endif
