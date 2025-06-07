@@ -49,14 +49,16 @@ uint64_t sys_read(int fd, char * buffer, int count) {
     }
     int i = 0;
     for (; i < count; i++) {
-        char c = keyboard_getchar();
-        if (c == 0) {
-            break;
+        char c = 0;
+        // Espera activamente hasta que hay input
+        while ((c = keyboard_getchar()) == 0) {
         }
         buffer[i] = c;
+        
     }
     return i;
 }
+
 
 void syscall_clear_screen() {
     clearScreen();

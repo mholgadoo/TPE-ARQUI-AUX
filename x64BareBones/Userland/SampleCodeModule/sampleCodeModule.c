@@ -1,18 +1,34 @@
 #include "syscalls.h"
 #include <stdint.h>
 #include "shell.h"
+// Defino numeros de syscall segun mi dispatcher
+#define SYS_WRITE             0
+#define SYS_READ              1
+#define SYS_CLEAR_SCREEN      2
+#define SYS_GET_REGS          6
+#define SYS_GET_TIME          7
+#define SYS_CHANGE_FONT_SIZE  9
 
-//mains de prueba
-// Espera unos ticks entre cada cambio, para que veas bien el efecto
+int main() {
+    char c;
+    while (1) {
+        if (_sys_read(SYS_READ, 0, &c, 1) > 0) {
+            _sys_write(SYS_WRITE, &c, 1);
+        }
+    }
+    return 0;
+}
+
+//int main() {
+//    setUsername("M&M");
+ //   shell_run();
+//    return 0;
+//}
+
+/*
 void delay(int ticks) {
     _sys_sleep(3, ticks);
 }
-int main() {
-    setUsername("M&M");
-    shell_run();
-    return 0;
-}
-/*
 int main() {
     const char *msg = "Cambio";
     int sizes[] = {1, 2, 3, 2, 1};
@@ -172,16 +188,6 @@ int main3() {
         _sys_sleep(10);            // Dormí 100 ticks (~1 segundo si tu PIT es 100Hz)
         _sys_write("Desperte!\n", 11);
         _sys_sleep(100);
-    }
-    return 0;
-}
-
-int main2() {
-    char c;
-    while (1) {
-        if (_sys_read(0, &c, 1) > 0) {
-            _sys_write(&c, 1);
-        }
     }
     return 0;
 }

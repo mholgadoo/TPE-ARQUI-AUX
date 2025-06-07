@@ -52,6 +52,10 @@ static int capsLock = 0;
 static int ctrlPressed = 0;
 
 void keyboard_handler() {
+    while(1){
+        int i = 0;
+        putPixel(0x00FF0000, 20+(i++), 20); 
+    }
     uint8_t scancode = inb(0x60);
     char ascii = 0;
 
@@ -85,6 +89,7 @@ void keyboard_handler() {
     }
 
     if (ascii != 0) {
+        putPixel(0x00FF0000, 20, 20); 
         if (ctrlPressed && (ascii == 'l' || ascii == 'L')) {
             clearScreen();
             return;
