@@ -20,6 +20,7 @@ GLOBAL _exception0Handler
 EXTERN irqDispatcher
 EXTERN exceptionDispatcher
 EXTERN syscallDispatcher
+EXTERN getStackBase
 
 SECTION .text
 
@@ -118,13 +119,26 @@ SECTION .text
 
 
 %macro exceptionHandler 1
-	pushState
+        pushState
 
-	mov rdi, %1 ; pasaje de parametro
-	call exceptionDispatcher
+        mov rdi, %1                 ; pass exception number
+        call exceptionDispatcher
 
-	popState
-	iretq
+        popState
+
+        ; switch to user stack and prepare iretq frame
+        call getStackBase
+        mov rsp, rax
+
+        ; build iretq stack frame -> RIP, CS, RFLAGS(IF=1)
+        pushfq                      ; current rflags
+        pop rax
+        or rax, 0x200               ; ensure IF = 1
+        push rax                    ; rflags
+        push qword 0x08             ; cs (kernel code segment)
+        push qword 0x400000         ; user entry point
+
+        iretq
 %endmacro
 
 
