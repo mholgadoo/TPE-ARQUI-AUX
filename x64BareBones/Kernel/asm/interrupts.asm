@@ -120,23 +120,24 @@ SECTION .text
 
 %macro exceptionHandler 1
         pushState
+        pushfq                      ; preserve flags
 
-        mov rdi, %1                 ; pass exception number
-        call exceptionDispatcher
+        mov     rdi, %1             ; pass exception number
+        call    exceptionDispatcher
 
+        popfq                       ; restore flags
         popState
 
-        ; switch to user stack and prepare iretq frame
-        call getStackBase
-        mov rsp, rax
+        ; load user stack and build an iretq frame
+        call    getStackBase        ; RAX = user stack top
+        mov     rsp, rax
 
-        ; build iretq stack frame -> RIP, CS, RFLAGS(IF=1)
         pushfq                      ; current rflags
-        pop rax
-        or rax, 0x200               ; ensure IF = 1
-        push rax                    ; rflags
-        push qword 0x08             ; cs (kernel code segment)
-        push qword 0x400000         ; user entry point
+        pop     rax
+        or      rax, 0x200          ; ensure IF = 1
+        push    rax                 ; rflags
+        push    qword 0x08          ; CS
+        push    qword 0x400000      ; RIP
 
         iretq
 %endmacro
