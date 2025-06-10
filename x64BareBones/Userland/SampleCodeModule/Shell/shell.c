@@ -172,6 +172,8 @@ static void commandProc(const char *line) {
         _sys_write(SYS_WRITE, "Playing beep sound...\n", str_len("Playing beep sound...\n"));
         _sys_playBeep(8, 1000, 440);  // Play a beep at 440 Hz
     }
+    else if (str_eq(line, "pongis"))
+        pongis_game();
     else
        _sys_write(SYS_WRITE, "Unknown command\n",str_len("Unknown command\n"));
 }
