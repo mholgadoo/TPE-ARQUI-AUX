@@ -16,7 +16,11 @@
 
 #define PADDLE_SIZE 40
 #define BALL_SIZE 16
-#define HOLE_SIZE 24
+#define HOLE_SIZE 48
+
+#define OBSTACLE_W 60
+#define OBSTACLE_H 60
+#define OBSTACLE_COUNT 3
 
 #define PADDLE_SPEED 10
 #define BALL_SPEED 8
@@ -25,6 +29,13 @@ typedef struct {
     int x;
     int y;
 } vec2i;
+
+// Obstacles positions on screen
+static vec2i obstacles[OBSTACLE_COUNT] = {
+    {SCREEN_WIDTH / 2 - OBSTACLE_W / 2, SCREEN_HEIGHT / 2 - 100},
+    {SCREEN_WIDTH / 4 - OBSTACLE_W / 2, SCREEN_HEIGHT / 3},
+    {3 * SCREEN_WIDTH / 4 - OBSTACLE_W / 2, SCREEN_HEIGHT / 3}
+};
 
 static int str_len(const char *s) {
     int l = 0;
@@ -84,9 +95,11 @@ void pongis_game(){
 
     char running = 1;
     while(running){
+        // process all input characters available this frame
         char c = 0;
-        if(_sys_read(SYS_READ,0,&c,1)>0){
-            if(c==ESC || c=='q') break;
+        while(_sys_read(SYS_READ,0,&c,1)>0){
+            if(c==ESC || c=='q')
+                running = 0; // exit game
             if(c=='w') p1.y -= PADDLE_SPEED;
             if(c=='s') p1.y += PADDLE_SPEED;
             if(c=='a') p1.x -= PADDLE_SPEED;
@@ -96,16 +109,44 @@ void pongis_game(){
             if(c=='j') p2.x -= PADDLE_SPEED;
             if(c=='l') p2.x += PADDLE_SPEED;
         }
+        if(!running) break;
+
+        // store previous positions in case we collide with obstacles
+        vec2i prev_p1 = p1;
+        vec2i prev_p2 = p2;
 
         clamp(&p1.x,0,SCREEN_WIDTH-PADDLE_SIZE);
         clamp(&p1.y,0,SCREEN_HEIGHT-PADDLE_SIZE);
         clamp(&p2.x,0,SCREEN_WIDTH-PADDLE_SIZE);
         clamp(&p2.y,0,SCREEN_HEIGHT-PADDLE_SIZE);
 
+        // prevent paddles from entering obstacles
+        for(int i=0;i<OBSTACLE_COUNT;i++){
+            if(rect_overlap(p1.x,p1.y,PADDLE_SIZE,PADDLE_SIZE,
+                            obstacles[i].x,obstacles[i].y,OBSTACLE_W,OBSTACLE_H))
+                p1 = prev_p1;
+            if(rect_overlap(p2.x,p2.y,PADDLE_SIZE,PADDLE_SIZE,
+                            obstacles[i].x,obstacles[i].y,OBSTACLE_W,OBSTACLE_H))
+                p2 = prev_p2;
+        }
+
         ball.x += vx;
         ball.y += vy;
         if(ball.x <=0 || ball.x+BALL_SIZE>=SCREEN_WIDTH){ vx=-vx; ball.x += vx; }
         if(ball.y <=0 || ball.y+BALL_SIZE>=SCREEN_HEIGHT){ vy=-vy; ball.y += vy; }
+
+        // bounce off obstacles
+        for(int i=0;i<OBSTACLE_COUNT;i++){
+            if(rect_overlap(ball.x,ball.y,BALL_SIZE,BALL_SIZE,
+                           obstacles[i].x,obstacles[i].y,OBSTACLE_W,OBSTACLE_H)){
+                if(ball.x+BALL_SIZE <= obstacles[i].x || ball.x >= obstacles[i].x+OBSTACLE_W)
+                    vx = -vx;
+                if(ball.y+BALL_SIZE <= obstacles[i].y || ball.y >= obstacles[i].y+OBSTACLE_H)
+                    vy = -vy;
+                ball.x += vx;
+                ball.y += vy;
+            }
+        }
 
         if(rect_overlap(ball.x,ball.y,BALL_SIZE,BALL_SIZE,p1.x,p1.y,PADDLE_SIZE,PADDLE_SIZE)){
             if(ball.x+p1.x+PADDLE_SIZE < ball.x+BALL_SIZE+p1.x){} //dummy
@@ -136,8 +177,9 @@ void pongis_game(){
         _sys_drawRect(SYS_DRAW_RECT,0xFF0000,p2.x,p2.y,PADDLE_SIZE,PADDLE_SIZE);
         _sys_drawRect(SYS_DRAW_RECT,0xFFFFFF,ball.x,ball.y,BALL_SIZE,BALL_SIZE);
         _sys_drawRect(SYS_DRAW_RECT,0x0000FF,hole.x,hole.y,HOLE_SIZE,HOLE_SIZE);
+        for(int i=0;i<OBSTACLE_COUNT;i++)
+            _sys_drawRect(SYS_DRAW_RECT,0x888888,obstacles[i].x,obstacles[i].y,OBSTACLE_W,OBSTACLE_H);
 
         _sys_sleep(SYS_SLEEP,2);
     }
 }
-
