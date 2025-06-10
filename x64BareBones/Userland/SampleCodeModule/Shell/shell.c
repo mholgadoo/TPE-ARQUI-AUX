@@ -170,7 +170,13 @@ static void commandProc(const char *line) {
         _sys_changeFontSize(SYS_CHANGE_FONT_SIZE, 3);
     else if (str_eq(line, "playbeep")) {
         _sys_write(SYS_WRITE, "Playing beep sound...\n", str_len("Playing beep sound...\n"));
-        _sys_playBeep(8, 1000, 440);  // Play a beep at 440 Hz
+        _sys_playBeep(8, 220, 200);  // A
+        _sys_playBeep(8, 249.94, 200);  // B
+        _sys_playBeep(8, 261.63, 200);  // C
+        _sys_playBeep(8, 293.66, 200);  // D
+        _sys_playBeep(8, 329.63, 200);  // E
+        _sys_playBeep(8, 349.23, 200);  // F
+        _sys_playBeep(8, 392, 200);  // G
     }
     else if (str_eq(line, "pongis"))
         pongis_game();
