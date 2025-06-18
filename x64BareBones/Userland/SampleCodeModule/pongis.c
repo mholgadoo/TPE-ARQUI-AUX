@@ -3,6 +3,7 @@
 #include "shell.h"
 #include "lib.h"
 
+//numeros syscalls
 #define SYS_WRITE 0
 #define SYS_READ 1
 #define SYS_CLEAR_SCREEN 2
@@ -10,72 +11,52 @@
 #define SYS_DRAW_RECT 4
 #define SYS_PLAY_BEEP 8
 #define SYS_FONT_SIZE 9
+
 #define SCREEN_WIDTH 1024
 #define SCREEN_HEIGHT 768
 
 #define ESC 27
 
-#define PADDLE_SIZE 40
+#define PLAYERS_SIZE 40
 #define BALL_SIZE   16
-#define HOLE_SIZE   48
+#define HOLE_SIZE   58
 
 #define L1_OB_W 100
-#define L1_OB_H 100
-#define L1_OBS  2
+#define L1_OB_H 100 //tamaño obstaculos nivel 1
+#define L1_OBS  2 //cantidad de obstaculos del nivel 1
 
 #define L2_OB_W 60
 #define L2_OB_H 60
 #define L2_OBS  4
 
-#define PADDLE_SPEED 10
+#define PLAYER_SPEED 8
 #define BALL_SPEED   8
 
 typedef struct {
     int x;
     int y;
-} vec2i;
+} coords;
 
-static vec2i *obstacles;
+static coords *obstacles;
 static int obstacle_count;
 static int obstacle_w;
 static int obstacle_h;
 
 
-// Obstacles positions on screen
-static vec2i level1_obstacles[L1_OBS] = {
+//posicion de los obstaculos y con _sys_drawRect le damos color y tamaño
+static coords level1_obstacles[L1_OBS] = {
     {SCREEN_WIDTH/3 - L1_OB_W/2, SCREEN_HEIGHT/2 - L1_OB_H/2},
     {2*SCREEN_WIDTH/3 - L1_OB_W/2, SCREEN_HEIGHT/2 - L1_OB_H/2}
 };
 
-static vec2i level2_obstacles[L2_OBS] = {
+static coords level2_obstacles[L2_OBS] = {
     {SCREEN_WIDTH/2 - L2_OB_W/2, SCREEN_HEIGHT/2 - 150},
     {SCREEN_WIDTH/4 - L2_OB_W/2, SCREEN_HEIGHT/3},
     {3*SCREEN_WIDTH/4 - L2_OB_W/2, SCREEN_HEIGHT/3},
     {SCREEN_WIDTH/2 - L2_OB_W/2, SCREEN_HEIGHT/2 + 80}
 };
 
-
-static int int_to_str(int v, char *buf) {
-    char tmp[16];
-    int i = 0;
-    if (v == 0) {
-        buf[0] = '0';
-        buf[1] = 0;
-        return 1;
-    }
-    int neg = 0;
-    if (v < 0) { neg = 1; v = -v; }
-    while (v > 0) {
-        tmp[i++] = '0' + (v % 10);
-        v /= 10;
-    }
-    int len = 0;
-    if (neg) buf[len++] = '-';
-    while (i--) buf[len++] = tmp[i];
-    buf[len] = 0;
-    return len;
-}
-
+//implementamos el score
 static void draw_score(int p1, int p2) {
     char buf[32];
     print("P1: ");
@@ -89,6 +70,7 @@ static void draw_score(int p1, int p2) {
     print("\n");
 }
 
+//para ver cuantos jugadores juegan. Si juega uno solo, el otro se mueve solo (siguiendo a la pelota en el eje y)
 static int ask_players() {
     const char *msg = "Jugadores (1/2): ";
     print(msg);
@@ -109,8 +91,8 @@ static void show_victory(int last, int players) {
     }
     print(msg);
     print("\n");
-    print(msg);
-    print("\n");
+
+    //cacion
     playBeep(8, 349.23, 400);
     playBeep(8, 349.23, 300);
     playBeep(8, 349.23, 100);
@@ -132,22 +114,23 @@ static void show_victory(int last, int players) {
     _sys_sleep(SYS_SLEEP, 60);
 }
 
-static int rect_overlap(int x1, int y1, int w1, int h1,
-                        int x2, int y2, int w2, int h2) {
-    return !(x1 + w1 < x2 || x2 + w2 < x1 ||
-             y1 + h1 < y2 || y2 + h2 < y1);
+static int box_collider(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
+    return !(x1 + w1 < x2 || x2 + w2 < x1 || y1 + h1 < y2 || y2 + h2 < y1);
 }
 
-static void clamp(int *v, int min, int max) {
+static void VInRange(int *v, int min, int max) {
     if (*v < min) *v = min;
     if (*v > max) *v = max;
 }
 
 void pongis_game() {
     int players = ask_players();
-    vec2i p1 = { 100, SCREEN_HEIGHT/2 - PADDLE_SIZE/2 };
-    vec2i p2 = { SCREEN_WIDTH-100-PADDLE_SIZE, SCREEN_HEIGHT/2 - PADDLE_SIZE/2 };
-    int score1 = 0, score2 = 0;
+    
+    coords p1 = {100, SCREEN_HEIGHT/2 - PLAYERS_SIZE/2};
+    coords p2 = {SCREEN_WIDTH-100-PLAYERS_SIZE, SCREEN_HEIGHT/2 - PLAYERS_SIZE/2};
+    
+    int score1 = 0;
+    int score2 = 0;
     int last = 0;
     char running = 1;
 
@@ -164,97 +147,93 @@ void pongis_game() {
             obstacle_h     = L2_OB_H;
         }
 
-        vec2i ball = { SCREEN_WIDTH/2 - BALL_SIZE/2, SCREEN_HEIGHT/2 - BALL_SIZE/2 };
-        vec2i hole = { SCREEN_WIDTH/2 - HOLE_SIZE/2, 60 };
+        coords ball = { SCREEN_WIDTH/2 - BALL_SIZE/2, SCREEN_HEIGHT/2 - BALL_SIZE/2 };
+        coords hole = { SCREEN_WIDTH/2 - HOLE_SIZE/2, 60 };
         int vx = 0, vy = 0;
         char levelWon = 0;
 
         while (running && !levelWon) {
+            coords pos1 = p1, pos2 = p2; //para que podamos volver atras si se chocan con obstaculos
             char c = 0;
             while (read(&c, 1) > 0) {
+                //con q o ESC salimos del juego
                 if (c == ESC || c == 'q') running = 0;
-                if (c == 'w') p1.y -= PADDLE_SPEED;
-                if (c == 's') p1.y += PADDLE_SPEED;
-                if (c == 'a') p1.x -= PADDLE_SPEED;
-                if (c == 'd') p1.x += PADDLE_SPEED;
+                if (c == 'w') p1.y -= PLAYER_SPEED;
+                if (c == 's') p1.y += PLAYER_SPEED;
+                if (c == 'a') p1.x -= PLAYER_SPEED;
+                if (c == 'd') p1.x += PLAYER_SPEED;
                 if (players == 2) {
-                    if (c == 'i') p2.y -= PADDLE_SPEED;
-                    if (c == 'k') p2.y += PADDLE_SPEED;
-                    if (c == 'j') p2.x -= PADDLE_SPEED;
-                    if (c == 'l') p2.x += PADDLE_SPEED;
+                    if (c == 'i') p2.y -= PLAYER_SPEED;
+                    if (c == 'k') p2.y += PLAYER_SPEED;
+                    if (c == 'j') p2.x -= PLAYER_SPEED;
+                    if (c == 'l') p2.x += PLAYER_SPEED;
                 }
             }
             if (!running) break;
 
-            vec2i prev_p1 = p1, prev_p2 = p2;
             if (players == 1) {
-                if (p2.y + PADDLE_SIZE/2 < ball.y)
-                    p2.y += PADDLE_SPEED;
-                else if (p2.y + PADDLE_SIZE/2 > ball.y + BALL_SIZE)
-                    p2.y -= PADDLE_SPEED;
+                // el segundo jugador se mueve solo (sube y baja segun la pos de la pelota)
+                if (p2.y + PLAYERS_SIZE/2 < ball.y)
+                    p2.y += PLAYER_SPEED;
+                else if (p2.y + PLAYERS_SIZE/2 > ball.y + BALL_SIZE)
+                    p2.y -= PLAYER_SPEED;
             }
 
-            clamp(&p1.x, 0, SCREEN_WIDTH-PADDLE_SIZE);
-            clamp(&p1.y, 0, SCREEN_HEIGHT-PADDLE_SIZE);
-            clamp(&p2.x, 0, SCREEN_WIDTH-PADDLE_SIZE);
-            clamp(&p2.y, 0, SCREEN_HEIGHT-PADDLE_SIZE);
+            //jugadores no pueden salirse de la pantalla
+            VInRange(&p1.x, 0, SCREEN_WIDTH-PLAYERS_SIZE);
+            VInRange(&p1.y, 0, SCREEN_HEIGHT-PLAYERS_SIZE);
+            VInRange(&p2.x, 0, SCREEN_WIDTH-PLAYERS_SIZE);
+            VInRange(&p2.y, 0, SCREEN_HEIGHT-PLAYERS_SIZE);
 
             for (int i = 0; i < obstacle_count; i++) {
-                if (rect_overlap(p1.x,p1.y,PADDLE_SIZE,PADDLE_SIZE,
-                                 obstacles[i].x,obstacles[i].y,obstacle_w,obstacle_h))
-                    p1 = prev_p1;
-                if (rect_overlap(p2.x,p2.y,PADDLE_SIZE,PADDLE_SIZE,
-                                 obstacles[i].x,obstacles[i].y,obstacle_w,obstacle_h))
-                    p2 = prev_p2;
+                if (box_collider(p1.x,p1.y,PLAYERS_SIZE,PLAYERS_SIZE, obstacles[i].x,obstacles[i].y,obstacle_w,obstacle_h))
+                    p1 = pos1;
+                if (box_collider(p2.x,p2.y,PLAYERS_SIZE,PLAYERS_SIZE, obstacles[i].x,obstacles[i].y,obstacle_w,obstacle_h))
+                    p2 = pos2;
             }
 
-            vec2i prev_ball = ball;
+            coords coords_ball = ball;
             ball.x += vx;
-            if (ball.x <= 0 || ball.x+BALL_SIZE >= SCREEN_WIDTH) {
-                ball.x = prev_ball.x;
+            if (ball.x <= 0 || ball.x +BALL_SIZE >= SCREEN_WIDTH) {
+                ball.x = coords_ball.x;
                 vx = -vx;
             }
             for (int i = 0; i < obstacle_count; i++) {
-                if (rect_overlap(ball.x,ball.y,BALL_SIZE,BALL_SIZE,
-                                 obstacles[i].x,obstacles[i].y,obstacle_w,obstacle_h)) {
-                    ball.x = prev_ball.x;
+                if (box_collider(ball.x,ball.y,BALL_SIZE,BALL_SIZE, obstacles[i].x,obstacles[i].y,obstacle_w,obstacle_h)) {
+                    ball.x = coords_ball.x;
                     vx = -vx;
                     break;
                 }
             }
 
-            prev_ball = ball;
+            coords_ball = ball;
             ball.y += vy;
             if (ball.y <= 0 || ball.y+BALL_SIZE >= SCREEN_HEIGHT) {
-                ball.y = prev_ball.y;
+                ball.y = coords_ball.y;
                 vy = -vy;
             }
             for (int i = 0; i < obstacle_count; i++) {
-                if (rect_overlap(ball.x,ball.y,BALL_SIZE,BALL_SIZE,
-                                 obstacles[i].x,obstacles[i].y,obstacle_w,obstacle_h)) {
-                    ball.y = prev_ball.y;
+                if (box_collider(ball.x,ball.y,BALL_SIZE,BALL_SIZE, obstacles[i].x,obstacles[i].y,obstacle_w,obstacle_h)) {
+                    ball.y = coords_ball.y;
                     vy = -vy;
                     break;
                 }
             }
 
-            if (rect_overlap(ball.x,ball.y,BALL_SIZE,BALL_SIZE,
-                             p1.x,p1.y,PADDLE_SIZE,PADDLE_SIZE)) {
+            if (box_collider(ball.x,ball.y,BALL_SIZE,BALL_SIZE, p1.x,p1.y,PLAYERS_SIZE,PLAYERS_SIZE)) {
                 vx = (ball.x < p1.x ? -BALL_SPEED : BALL_SPEED);
                 vy = (ball.y < p1.y ? -BALL_SPEED : BALL_SPEED);
                 last = 1;
                 playBeep(SYS_PLAY_BEEP, 40, 80);
             }
-            if (rect_overlap(ball.x,ball.y,BALL_SIZE,BALL_SIZE,
-                             p2.x,p2.y,PADDLE_SIZE,PADDLE_SIZE)) {
+            if (box_collider(ball.x,ball.y,BALL_SIZE,BALL_SIZE, p2.x,p2.y,PLAYERS_SIZE,PLAYERS_SIZE)) {
                 vx = (ball.x < p2.x ? -BALL_SPEED : BALL_SPEED);
                 vy = (ball.y < p2.y ? -BALL_SPEED : BALL_SPEED);
                 last = 2;
                 playBeep(SYS_PLAY_BEEP, 60, 80);
             }
 
-            if (rect_overlap(ball.x,ball.y,BALL_SIZE,BALL_SIZE,
-                             hole.x,hole.y,HOLE_SIZE,HOLE_SIZE)) {
+            if (box_collider(ball.x,ball.y,BALL_SIZE,BALL_SIZE, hole.x,hole.y,HOLE_SIZE,HOLE_SIZE)) {
                 playBeep(SYS_PLAY_BEEP, 600, 90);
                 if (last == 1) score1++;
                 else if (last == 2) score2++;
@@ -264,11 +243,13 @@ void pongis_game() {
             clearScreen();
             draw_score(score1, score2);
 
-            _sys_drawRect(SYS_DRAW_RECT, 0x00FF00, p1.x, p1.y, PADDLE_SIZE, PADDLE_SIZE);
-            _sys_drawRect(SYS_DRAW_RECT, 0xFF0000, p2.x, p2.y, PADDLE_SIZE, PADDLE_SIZE);
+            _sys_drawRect(SYS_DRAW_RECT, 0x00FF00, p1.x, p1.y, PLAYERS_SIZE, PLAYERS_SIZE);
+            _sys_drawRect(SYS_DRAW_RECT, 0xFF0000, p2.x, p2.y, PLAYERS_SIZE, PLAYERS_SIZE);
             _sys_drawRect(SYS_DRAW_RECT, 0xFFFFFF, ball.x, ball.y, BALL_SIZE, BALL_SIZE);
             _sys_drawRect(SYS_DRAW_RECT, 0x0000FF, hole.x, hole.y, HOLE_SIZE, HOLE_SIZE);
+            
             for (int i = 0; i < obstacle_count; i++) {
+                //ponemos los obstaculos segun el nivel
                 _sys_drawRect(SYS_DRAW_RECT, 0x888888,
                               obstacles[i].x, obstacles[i].y,
                               obstacle_w, obstacle_h);

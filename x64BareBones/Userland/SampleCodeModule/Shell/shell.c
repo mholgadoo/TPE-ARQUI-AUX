@@ -20,6 +20,7 @@ void shell_print_help() {
     print("fontscale 1      - lowest font size\n");
     print("fontscale 2      - middle font size\n");
     print("fontscale 3      - bigger font size\n");
+    print("pongis     - play pongis game\n");
 }
 
 static int read_line(char *buf, int max) {
@@ -59,10 +60,11 @@ static void trigger_invopcode() {
 static void print_time() {
     rtc_time_t tm;
     getTime(&tm);
+    int hour = (tm.hour - 3 + 24) % 24;//restamos 3 por la zona horaria UTC-3
     char buf[9];
     buf[2] = ':'; buf[5] = ':'; buf[8] = '\0';
-    buf[0] = '0' + (tm.hour / 10);
-    buf[1] = '0' + (tm.hour % 10);
+    buf[0] = '0' + (hour / 10);
+    buf[1] = '0' + (hour % 10); 
     buf[3] = '0' + (tm.min  / 10);
     buf[4] = '0' + (tm.min  % 10);
     buf[6] = '0' + (tm.sec  / 10);

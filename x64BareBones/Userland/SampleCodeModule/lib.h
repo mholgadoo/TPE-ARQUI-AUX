@@ -33,5 +33,6 @@ void changeFontSize(int size);
 
 void playBeep(int channel, double freq, int duration);
 
+int int_to_str(int v, char *buf);
 
 #endif // LIB_H

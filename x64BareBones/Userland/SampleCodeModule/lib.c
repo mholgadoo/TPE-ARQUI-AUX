@@ -47,3 +47,23 @@ void playBeep(int channel, double freq, int duration) {
     _sys_playBeep(channel, freq, duration);
 }
 
+int int_to_str(int v, char *buf) {
+    char tmp[16];
+    int i = 0;
+    if (v == 0) {
+        buf[0] = '0';
+        buf[1] = 0;
+        return 1;
+    }
+    int neg = 0;
+    if (v < 0) { neg = 1; v = -v; }
+    while (v > 0) {
+        tmp[i++] = '0' + (v % 10);
+        v /= 10;
+    }
+    int len = 0;
+    if (neg) buf[len++] = '-';
+    while (i--) buf[len++] = tmp[i];
+    buf[len] = 0;
+    return len;
+}
